@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { ensureDir, sleepRandom } from './util.mjs';
+import { ensureDir, sleep, sleepRandom } from './util.mjs';
 
 export function normalizeHasMore(value) {
   if (value === false) return 0;
@@ -46,8 +46,20 @@ export class CaptureSink {
   async handle(response) {
     const url = response.url();
     if (!this.matcher.test(url)) return;
+    let body = null;
+    for (let attempt = 0; attempt < 2 && body === null; attempt++) {
+      try {
+        body = await response.text();
+      } catch {
+        if (attempt === 0) await sleep(300);
+      }
+    }
+    if (body === null) {
+      // 请求被取消/预检等场景读不到 body 属正常现象，只计数不刷屏
+      this.bodyErrors += 1;
+      return;
+    }
     try {
-      const body = await response.text();
       let json = null;
       try {
         json = JSON.parse(body);
@@ -63,8 +75,7 @@ export class CaptureSink {
       this.captures.push({ url, file, seq, hasMore: this.lastHasMore, bytes: body.length, json });
       this.log(`  ↳ 捕获 ${base} 第 ${this.captures.length} 页（${body.length} 字节）`);
     } catch (err) {
-      // 请求被取消/预检等场景读不到 body 属正常现象，只计数不刷屏
-      this.bodyErrors += 1;
+      this.errors.push(`${url}: ${err.message}`);
     }
   }
 }

@@ -6,6 +6,26 @@
 2. 浏览新增笔记，把想深挖的条目 frontmatter 改成 `深挖: true`；
 3. 双击 `深挖.cmd`：下载原片 + GPU 转写逐字稿写回笔记。
 
+## 定时同步（Windows 计划任务）
+
+让电脑每周自动跑两次，不需要打开 Codex：
+
+```powershell
+# 注册（默认每周三、周日 19:30）
+powershell -NoProfile -ExecutionPolicy Bypass -File "skills\douyin-collection-obsidian\scripts\register-scheduled-task.ps1"
+# 自定义时间（例：周三、周五 21:00）
+powershell -NoProfile -ExecutionPolicy Bypass -File "skills\douyin-collection-obsidian\scripts\register-scheduled-task.ps1" -Days Wednesday,Friday -At 21:00
+# 移除
+powershell -NoProfile -ExecutionPolicy Bypass -File "skills\douyin-collection-obsidian\scripts\register-scheduled-task.ps1" -Remove
+```
+
+要点：
+
+- 任务名 `DouyinToObsidian-Sync`，执行 `定时同步.cmd`（无 pause）；输出追加到 `data\logs\scheduled.log`；
+- 登录 Windows 后才会运行（`Interactive`），勾选了「错过触发后尽快补跑」（`StartWhenAvailable`），电脑关机/休眠错过也会在开机后补上；
+- 运行时会自动拉起专用 Edge 窗口（保持打开，可随手关掉）；登录过期时退出码为 2，会在日志与下一条记录中体现；
+- 只做「同步」；深挖（下载原片 + 转写）仍按需手动运行，避免占用 GPU。
+
 ## 同步命令与输出解读
 
 ```bat

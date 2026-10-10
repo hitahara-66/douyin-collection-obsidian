@@ -80,6 +80,15 @@ cd douyin-collection-obsidian
 2. 浏览新增笔记，把想深挖的条目 frontmatter 改成 `深挖: true`；
 3. （可选）双击 `深挖.cmd`，等它下载 + 转写。
 
+### 让电脑自动跑（可选）
+
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -File "skills\douyin-collection-obsidian\scripts\register-scheduled-task.ps1"
+```
+
+默认每周三、周日 19:30 自动同步（Windows 计划任务，不依赖 Codex 是否打开；错过的触发会在下次开机后补跑）。
+日志在 `data\logs\scheduled.log`；改时间 / 移除见 [日常操作](skills/douyin-collection-obsidian/references/operations.md)。
+
 ### 命令速查
 
 | 目标 | 命令 |

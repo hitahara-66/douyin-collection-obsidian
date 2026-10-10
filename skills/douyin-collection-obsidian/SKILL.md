@@ -41,6 +41,7 @@ metadata:
 | 页面结构探测（M0） | `同步.cmd --spike` → 报告在 `data\spike\M0-report.md` |
 | Edge 登录态检查 | `.\.venv\Scripts\python.exe -m processor.sync --status` |
 | 深挖（下载 + 转写标星条目） | `深挖.cmd`（单条 `--id <aweme_id>`；强制重跑 `--refresh`） |
+| 注册每周自动同步（计划任务） | `powershell -NoProfile -ExecutionPolicy Bypass -File "skills\douyin-collection-obsidian\scripts\register-scheduled-task.ps1"`（默认周三/周日 19:30；`-Remove` 移除） |
 | 导出分类样本 | `.\.venv\Scripts\python.exe -m processor.run --export-samples` |
 | 自检（无需登录） | `cd fetcher; node test-capture.mjs`；`.\.venv\Scripts\python.exe -m processor.selfcheck` |
 

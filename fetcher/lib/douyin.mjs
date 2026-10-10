@@ -4,8 +4,8 @@ import { ensureDir, log as defaultLog, sleep } from './util.mjs';
 export const DOUYIN_HOME = 'https://www.douyin.com/';
 
 export const COLLECTION_TAB_URLS = [
-  'https://www.douyin.com/user/self?showTab=collection',
   'https://www.douyin.com/user/self?showTab=favorite_collection',
+  'https://www.douyin.com/user/self?showTab=collection',
   'https://www.douyin.com/user/self',
 ];
 
@@ -52,6 +52,15 @@ export async function clickByText(page, text) {
       return true;
     }, text)
     .catch(() => false);
+}
+
+async function waitForCapture(sink, maxSeconds) {
+  const deadline = Date.now() + Math.max(1, Number(maxSeconds) || 1) * 1000;
+  while (Date.now() < deadline) {
+    if (sink.captures.length) return true;
+    await sleep(500);
+  }
+  return sink.captures.length > 0;
 }
 
 export function collectFolderCandidates(json) {
@@ -183,25 +192,31 @@ export async function captureDouyin({ browser, cfg, outDir, log = defaultLog }) 
 
   log('登录正常，打开「收藏」列表 ...');
   let collectionUrl = null;
-  for (const url of COLLECTION_TAB_URLS) {
-    if (sinks.listcollection.captures.length) {
-      collectionUrl = collectionUrl || page.url();
-      break;
+  for (let attempt = 1; attempt <= 2 && !collectionUrl; attempt++) {
+    for (const url of COLLECTION_TAB_URLS) {
+      if (sinks.listcollection.captures.length) {
+        collectionUrl = page.url();
+        break;
+      }
+      try {
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout });
+      } catch (e) {
+        errors.push(`打开 ${url} 失败: ${e.message}`);
+        continue;
+      }
+      // 冷启动时数据可能十几秒才返回：轮询等待，不再用固定 3.5 秒就翻页
+      if (!(await waitForCapture(sinks.listcollection, 30))) {
+        const clicked = await clickByText(page, '收藏');
+        if (clicked) await waitForCapture(sinks.listcollection, 15);
+      }
+      if (sinks.listcollection.captures.length) {
+        collectionUrl = page.url();
+        break;
+      }
     }
-    try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout });
-    } catch (e) {
-      errors.push(`打开 ${url} 失败: ${e.message}`);
-      continue;
-    }
-    await sleep(3500);
-    if (!sinks.listcollection.captures.length) {
-      const clicked = await clickByText(page, '收藏');
-      if (clicked) await sleep(3500);
-    }
-    if (sinks.listcollection.captures.length) {
-      collectionUrl = page.url();
-      break;
+    if (!collectionUrl && attempt < 2) {
+      log('  ⚠ 本次未捕获到收藏数据，30 秒后重试一轮 ...');
+      await sleep(30000);
     }
   }
 
@@ -247,7 +262,7 @@ export async function captureDouyin({ browser, cfg, outDir, log = defaultLog }) 
         folderResults.push({ id: folder.id, name: folder.name, ok: false, reason: 'click-failed', pages: 0, exhausted: false });
         continue;
       }
-      await sleep(2500);
+      await waitForCapture(sinks.collectsVideo, 20);
       log(`抓取收藏夹「${folder.name}」...`);
       const scroll = await autoScroll(page, {
         sink: sinks.collectsVideo,
@@ -280,27 +295,31 @@ export async function captureDouyin({ browser, cfg, outDir, log = defaultLog }) 
 
   log('打开「稍后再看」列表 ...');
   let watchLaterScroll = null;
-  try {
-    await page.goto('https://www.douyin.com/user/self?showTab=watch_later', { waitUntil: 'domcontentloaded', timeout });
-    await sleep(3500);
-    if (!sinks.watchlater.captures.length) {
-      const clicked = await clickByText(page, '稍后再看');
-      if (clicked) await sleep(3500);
+  for (let attempt = 1; attempt <= 2 && !sinks.watchlater.captures.length; attempt++) {
+    try {
+      await page.goto('https://www.douyin.com/user/self?showTab=watch_later', { waitUntil: 'domcontentloaded', timeout });
+      if (!(await waitForCapture(sinks.watchlater, 30))) {
+        const clicked = await clickByText(page, '稍后再看');
+        if (clicked) await waitForCapture(sinks.watchlater, 15);
+      }
+      if (sinks.watchlater.captures.length) {
+        watchLaterScroll = await autoScroll(page, {
+          sink: sinks.watchlater,
+          delayMin: delay.delay_min_sec,
+          delayMax: delay.delay_max_sec,
+          maxIdle: delay.max_idle_scrolls,
+          maxScrolls: delay.max_scrolls,
+          log,
+        });
+      } else if (attempt < 2) {
+        log('  ⚠ 本次未捕获到「稍后再看」数据，30 秒后重试一轮 ...');
+        await sleep(30000);
+      } else {
+        errors.push('未能捕获「稍后再看」列表数据（可能页面结构变化）。');
+      }
+    } catch (e) {
+      errors.push(`抓取「稍后再看」失败: ${e.message}`);
     }
-    if (sinks.watchlater.captures.length) {
-      watchLaterScroll = await autoScroll(page, {
-        sink: sinks.watchlater,
-        delayMin: delay.delay_min_sec,
-        delayMax: delay.delay_max_sec,
-        maxIdle: delay.max_idle_scrolls,
-        maxScrolls: delay.max_scrolls,
-        log,
-      });
-    } else {
-      errors.push('未能捕获「稍后再看」列表数据（可能页面结构变化）。');
-    }
-  } catch (e) {
-    errors.push(`抓取「稍后再看」失败: ${e.message}`);
   }
   let watchLaterStats = { unique: 0, listNum: 0, invalid: 0 };
   if (sinks.watchlater.captures.length) {
