@@ -2,17 +2,26 @@
 """Obsidian 笔记与索引生成（幂等，保留手动区）。"""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from . import common
 
 DIVIDER = "<!-- 自动生成结束 · 以下为手动区，脚本不会修改 -->"
 
+_DATE10_RE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+
+
+def date_prefix(published_at):
+    """发布日期的排序前缀（`YYYY-MM-DD `）；缺失或格式异常时返回空串。"""
+    s = str(published_at or "")
+    return f"{s[:10]} " if _DATE10_RE.match(s) else ""
+
 
 def default_filename(item):
     author = common.sanitize_filename(item.get("author_name") or "未知作者", 24, "未知作者")
     title = common.sanitize_filename(item.get("title") or "无标题", 60, "无标题")
-    return f"{author}-{title}-{common.id8(item['aweme_id'])}.md"
+    return f"{date_prefix(item.get('published_at'))}{author}-{title}-{common.id8(item['aweme_id'])}.md"
 
 
 def build_frontmatter(item):
@@ -31,17 +40,14 @@ def build_frontmatter(item):
     }
 
 
-def cover_relpath(item, cfg):
+def cover_relpath(item):
     cover = item.get("cover_path")
     if not cover:
         return None
     p = Path(cover)
     if not p.exists():
         return None
-    try:
-        return p.relative_to(Path(cfg["vault_dir"])).as_posix()
-    except ValueError:
-        return None
+    return p.name
 
 
 def build_auto_body(item, cover_rel, transcript_text=None):
@@ -89,7 +95,7 @@ def write_note(item, cfg, transcript_text=None):
     old = path.read_text(encoding="utf-8") if path.exists() else ""
     manual = split_manual(old)
     fm = build_frontmatter(item)
-    content = common.dump_frontmatter(fm) + build_auto_body(item, cover_relpath(item, cfg), transcript_text) + manual
+    content = common.dump_frontmatter(fm) + build_auto_body(item, cover_relpath(item), transcript_text) + manual
     if old == content:
         return "unchanged", path, fm
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -97,15 +103,10 @@ def write_note(item, cfg, transcript_text=None):
     return "written", path, fm
 
 
-def _index_line(item, vault):
+def _index_line(item):
     note_path = item.get("note_path") or ""
-    target = ""
-    if note_path:
-        try:
-            target = Path(note_path).relative_to(Path(vault)).with_suffix("").as_posix()
-        except ValueError:
-            target = ""
-    display = item.get("title") or "（无标题）"
+    target = Path(note_path).with_suffix("").name if note_path else ""
+    display = (item.get("title") or "（无标题）").replace("|", "｜")
     if not target:
         return f"- {display} — {item.get('author_name') or '未知'}"
     suffix = f" — {item.get('author_name') or '未知'}"
@@ -121,7 +122,7 @@ START_HERE = """# 开始这里
 
 ## 结构
 
-- `条目/`：一条视频一篇笔记（自动生成 + 你的手动区）
+- `条目/`：一条视频一篇笔记（自动生成 + 你的手动区），文件名以发布日期开头，列表按时间排列
 - `分类/`：按分类自动聚合的清单
 - `待看清单.md`：仍处于「待看」的条目（收藏 + 稍后再看）
 - `未分类.md` / `统计.md`：兜底清单与统计
@@ -162,7 +163,7 @@ def write_indexes(items, cfg, rules):
     for name, lst in sorted(by_cat.items()):
         lst.sort(key=lambda x: (x.get("first_seen_at") or "", x.get("aweme_id") or ""), reverse=True)
         lines = [f"# {name}", "", f"> 共 {len(lst)} 条 · 由脚本自动生成", ""]
-        lines += [_index_line(it, vault) for it in lst]
+        lines += [_index_line(it) for it in lst]
         fname = f"{common.sanitize_filename(name, 40)}.md"
         generated.add(fname)
         if common.write_text_if_changed(cat_dir / fname, "\n".join(lines) + "\n"):
@@ -174,14 +175,14 @@ def write_indexes(items, cfg, rules):
 
     uncat = by_cat.get("未分类", [])
     lines = ["# 未分类", "", f"> 共 {len(uncat)} 条 · 由脚本自动生成", ""]
-    lines += [_index_line(it, vault) for it in uncat]
+    lines += [_index_line(it) for it in uncat]
     if common.write_text_if_changed(vault / "未分类.md", "\n".join(lines) + "\n"):
         written += 1
 
     todo = [it for it in items if (it.get("status") or "") == "待看"]
     todo.sort(key=lambda x: (x.get("first_seen_at") or "", x.get("aweme_id") or ""), reverse=True)
     lines = ["# 待看清单", "", f"> 共 {len(todo)} 条 · 由脚本自动生成；离开「稍后再看」后会自动移出", ""]
-    lines += [_index_line(it, vault) for it in todo]
+    lines += [_index_line(it) for it in todo]
     if common.write_text_if_changed(vault / "待看清单.md", "\n".join(lines) + "\n"):
         written += 1
 

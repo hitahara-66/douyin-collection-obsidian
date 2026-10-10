@@ -43,6 +43,7 @@ metadata:
 | 深挖（下载 + 转写标星条目） | `深挖.cmd`（单条 `--id <aweme_id>`；强制重跑 `--refresh`） |
 | 注册每周自动同步（计划任务） | `powershell -NoProfile -ExecutionPolicy Bypass -File "skills\douyin-collection-obsidian\scripts\register-scheduled-task.ps1"`（默认周三/周日 19:30；`-Remove` 移除） |
 | 导出分类样本 | `.\.venv\Scripts\python.exe -m processor.run --export-samples` |
+| 重整条目文件名（按发布日期对齐） | `.\.venv\Scripts\python.exe -m processor.reorder`（预览；确认后加 `--apply`） |
 | 自检（无需登录） | `cd fetcher; node test-capture.mjs`；`.\.venv\Scripts\python.exe -m processor.selfcheck` |
 
 退出码：`0` 成功；`1` 出错（看 `data\logs\`）；`2` 需要登录（先跑 `登录抖音.cmd`）；`3` 调试端口/登录态未就绪。脚本末尾带 `pause`（双击友好）；自动化场景用 `cmd /c ".\\同步.cmd <nul"`。
@@ -54,6 +55,7 @@ metadata:
 - **抓取不完整时**（输出出现 ⚠ 或 manifest 里 `partial=true`）：已跳过「离开待看队列」判定，不要据此改状态，重跑同步再说。
 - **尊重用户覆盖**：用户改过的 `分类 / 标签 / 状态 / 深挖` 会被读回并保持；`taxonomy.yml` 改动只影响未覆盖条目。
 - **不要清理运行数据**：`data\`、媒体目录、HF 模型缓存都不要删除，除非用户明确要求。
+- **库路径必须真实存在**：`config\settings.yml` 的 `vault_dir` 指向的库被移动/改名后，同步会中止报错而不是另建空库；改配置指向现有库即可恢复。
 - **频控与账号安全**：单线程、每页随机 2–5 秒；不要并发跑多个同步/深挖；`data\edge-cookies.txt` 含登录态，绝不外传或提交。
 
 ## 参考文档

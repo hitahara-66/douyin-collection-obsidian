@@ -11,7 +11,7 @@ data\raw\<runid>\*.json ──► processor（Python + SQLite）
                               │  封面下载压缩 → vault\attachments\covers
                               ▼
                     Obsidian vault\<库目录>\
-                      ├─ 条目\作者-标题-<id8>.md   （一条一笔记，含手动区）
+                      ├─ 条目\YYYY-MM-DD 作者-标题-<id8>.md  （一条一笔记，按发布日期排序）
                       ├─ 分类\*.md / 待看清单.md / 未分类.md / 统计.md / 开始这里.md
                       └─ attachments\covers\*.webp
 
@@ -73,7 +73,8 @@ data\raw\<runid>\*.json ──► processor（Python + SQLite）
 
 ## 笔记契约与覆盖机制
 
-- 每个条目生成 `条目\作者-标题-<id8>.md`：frontmatter（固定 11 个字段）+ 自动正文（封面、元数据、可折叠逐字稿）+ 分界线 + 手动区；
+- 每个条目生成 `条目\YYYY-MM-DD 作者-标题-<id8>.md`（按发布日期排序），文件名自动剔除 `# ^ [ ]` 等 Obsidian 链接特殊字符（标题原文保留在 frontmatter）：frontmatter（固定 11 个字段）+ 自动正文（封面、元数据、可折叠逐字稿）+ 分界线 + 手动区；旧式命名可用 `python -m processor.reorder --apply` 一次性对齐（只改名，不改内容）；
+- 索引页与封面使用 Obsidian 最短路径链接（`[[文件名|标题]]`、`![[<id8>.webp]]`）：`抖音收藏` 放在 vault 的任意层级都能正确跳转，不会跳错或新建空笔记；
 - 每次处理前先「读回」用户对 `分类 / 标签 / 状态 / 深挖` 的修改（与 `last_auto` 快照比对），写入对应 `*_override` 列，之后自动值不再覆盖；
 - 自动区内容由数据库生成：同一输入重复运行 → 文件字节级不变（幂等）；手动区原样保留。
 

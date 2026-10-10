@@ -113,7 +113,7 @@ def id8(aweme_id):
     return s[-8:] if len(s) > 8 else s
 
 
-_ILLEGAL = re.compile(r'[\\/:*?"<>|\r\n\t]+')
+_ILLEGAL = re.compile(r'[\\/:*?"<>|#^\[\]\r\n\t]+')
 
 
 def sanitize_filename(name, max_len=60, fallback="未命名"):

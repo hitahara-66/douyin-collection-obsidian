@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 from pathlib import Path
 
@@ -83,7 +84,7 @@ def write_raw(raw_root: Path, name: str, bridge_ids, watchlater_ids=("3001", "30
     (folder / "collects-video.f_learn.0001.json").write_text(
         json.dumps({"aweme_list": [base_items[0]], "has_more": 0}, ensure_ascii=False), encoding="utf-8"
     )
-    bridge_items = [aweme(i, f"待看视频 {i}", "赵六", tags=()) for i in bridge_ids]
+    bridge_items = [aweme(i, f"待看视频 {i}" + (" #标签测试" if i == "2002" else ""), "赵六", tags=()) for i in bridge_ids]
     (folder / "collects-video.f_bridge.0001.json").write_text(
         json.dumps({"aweme_list": bridge_items, "has_more": 0}, ensure_ascii=False), encoding="utf-8"
     )
@@ -140,6 +141,16 @@ def run_tests(root: Path):
         "索引文件齐全",
         all((vault / f).exists() for f in ("开始这里.md", "统计.md", "未分类.md", "待看清单.md", "分类/学习.md")),
     )
+    note_names = [p.split("/", 1)[1] for p in snap1 if p.startswith("条目/")]
+    check("文件名剔除链接特殊字符", all(not any(c in n for c in "#^[]") for n in note_names), str(note_names))
+    links = []
+    for page in ("分类/学习.md", "待看清单.md", "未分类.md"):
+        for m in re.finditer(r"\[\[([^|\]]+)\|", (vault / page).read_text(encoding="utf-8")):
+            links.append(m.group(1))
+    ok_links = bool(links) and all(
+        "/" not in t and "#" not in t and (vault / "条目" / f"{t}.md").is_file() for t in links
+    )
+    check("索引链接为可解析的最短路径", ok_links, f"{len(links)} 条链接")
     con = db.connect(cfg["paths"]["db"])
     note_1001_path = Path(db.get_item(con, "1001")["note_path"])
     con.close()
@@ -171,6 +182,24 @@ def run_tests(root: Path):
     snap3 = snapshot(vault)
     s4 = runmod.run_pipeline(cfg, raw_dir=r1, offline_covers=True)
     check("编辑后再次同步幂等", snapshot(vault) == snap3, f"新增{s4['new']} 写{s4['notes_written']}")
+
+    # 保险：数据库已有条目但库目录不见了 → 必须中止报错，而不是另建一套空库
+    moved = root / "vault-moved"
+    bad_settings = root / "settings-moved.yml"
+    bad_settings.write_text(
+        "\n".join(
+            f'vault_dir: "{moved.as_posix()}"' if line.startswith("vault_dir:") else line
+            for line in settings.read_text(encoding="utf-8").splitlines()
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    try:
+        runmod.run_pipeline(common.load_config(bad_settings), raw_dir=r1, offline_covers=True)
+        guard_raised = False
+    except SystemExit:
+        guard_raised = True
+    check("库被移动时中止并报错", guard_raised and not moved.exists())
 
     r2 = write_raw(raw_root, "run2", ["2001"], ["3001"])
     s5 = runmod.run_pipeline(cfg, raw_dir=r2, offline_covers=True)

@@ -32,7 +32,7 @@ data\raw\<runid>\*.json ──► processor（Python + SQLite）
                               │  封面下载压缩 → vault\attachments\covers
                               ▼
                     Obsidian vault：<你的库目录>\
-                      ├─ 条目\作者-标题-<id8>.md   （一条一笔记，含手动区）
+                      ├─ 条目\YYYY-MM-DD 作者-标题-<id8>.md  （一条一笔记，按发布日期排序）
                       ├─ 分类\*.md / 待看清单.md / 未分类.md / 统计.md / 开始这里.md
                       └─ attachments\covers\*.webp
 
@@ -101,6 +101,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "skills\douyin-collection-ob
 | 页面结构探测 | `同步.cmd --spike` |
 | Edge 登录态检查 | `.\.venv\Scripts\python.exe -m processor.sync --status` |
 | 深挖标星条目 | `深挖.cmd`（`--id <aweme_id>` 单条、`--refresh` 强制重跑） |
+| 重整条目文件名（按发布日期排序） | `.\.venv\Scripts\python.exe -m processor.reorder`（预览；确认后加 `--apply`） |
 | 导出分类样本（给 Codex 聚类） | `.\.venv\Scripts\python.exe -m processor.run --export-samples` |
 | 离线自检 | `cd fetcher && node test-capture.mjs`；`.\.venv\Scripts\python.exe -m processor.selfcheck` |
 
@@ -134,10 +135,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "skills\douyin-collection-ob
 
 ## 常见问题
 
+- **报「库目录不存在」**：库文件夹被移动或改名了（数据库里还有记录）。把 `config\settings.yml` 的 `vault_dir` 指向现有库后重跑即可；脚本会拒绝在别处另建一套空库；
 - **提示需要登录**：双击 `登录抖音.cmd` 重新扫码，登录态一般能保持很久；
 - **抓取异常 / 0 页**：先 `同步.cmd --spike`，把 `data\spike\M0-report.md` 交给 Codex 迭代；
 - **转写报 `cublas64_12.dll is not found`**：重跑 `准备.cmd`（自动安装 CUDA 运行库）；
 - **下载 403**：工具会自动用已登录 Edge 刷新签名直链；仍失败多为视频被删或受限；
+- **在「分类」里点视频名会新建一篇空笔记**：旧版笔记文件名含 `#`，Obsidian 会把它当标题锚点、链接失效后点击即新建空文件；新版已剔除 `#` 等特殊字符并改用最短路径链接，跑一次 `同步.cmd` 即修复，误建的空笔记可手动删除；
 - 更多见 [故障排查](skills/douyin-collection-obsidian/references/troubleshooting.md)。
 
 ## 文档

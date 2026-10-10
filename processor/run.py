@@ -133,6 +133,21 @@ def run_pipeline(cfg, raw_dir=None, dry_run=False, offline_covers=False, export_
 
     con = db.connect(work_db)
     rules = tax.load_rules(cfg["paths"]["taxonomy"])
+    known = db.all_items(con)
+    vault_dir = Path(cfg["vault_dir"])
+    if known and not vault_dir.exists():
+        sample = next((row["note_path"] for row in known if row["note_path"]), "")
+        msg = [
+            f"⚠ 库目录不存在：{vault_dir}",
+            f"   数据库里已有 {len(known)} 条记录，说明库被移动或改名了。",
+        ]
+        if sample:
+            msg.append(f"   上次写入的笔记：{sample}")
+        msg += [
+            "   请改 config\\settings.yml 的 vault_dir 指向现有库后重跑；",
+            "   想重建整个库：先删掉 data\\library.db 再跑（原始数据仍在，可重放）。",
+        ]
+        raise SystemExit("\n".join(msg))
     adopted = adopt_note_edits(con, cfg)
     previous_bridge = {row["aweme_id"] for row in db.all_items(con) if row["in_bridge"]}
     previous_watch_later = {row["aweme_id"] for row in db.all_items(con) if row["in_watch_later"]}
