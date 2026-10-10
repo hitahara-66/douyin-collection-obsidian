@@ -1,0 +1,46 @@
+# 抖音收藏 → Obsidian 本地库 · 主配置（示例）
+# 首次运行「准备.cmd」会自动复制本文件为 config/settings.yml；请按需修改后使用。
+
+# Obsidian 库输出目录（vault 内的独立子目录）
+vault_dir: "D:\\Obsidian\\抖音收藏"
+
+# 深挖下载的原片/图集存放目录（不进 vault、不进 git）
+media_dir: "D:\\抖音收藏媒体"
+
+edge:
+  # 留空自动探测 Edge 安装位置
+  executable: ""
+  # 专用调试端口（与其它工具冲突时修改）
+  port: 9333
+  # 专用浏览器配置目录（登录态保存在这里，绝不入库）
+  profile_dir: "%LOCALAPPDATA%\\douyin-library\\edge-profile"
+
+capture:
+  # 每次翻页/滚动之间的随机等待区间（秒）
+  delay_min_sec: 2.0
+  delay_max_sec: 5.0
+  # 连续多少次滚动没有新数据就认为到底了
+  max_idle_scrolls: 5
+  # 单次抓取的滚动次数硬上限
+  max_scrolls: 400
+  page_load_timeout_sec: 60
+
+covers:
+  width: 480
+  max_bytes: 61440
+  format: webp
+
+deepdive:
+  # true = 保留原片（默认，防下架）；false = 转写成功后自动删片，只留逐字稿
+  keep_video: true
+
+lists:
+  # 备用桥接：仅当网页版「稍后再看」抓取失败时使用（在抖音 App 里建同名收藏夹，把想留的移进去）
+  watch_later_bridge_folder: "稍后再看·留存"
+
+paths:
+  taxonomy: "config/taxonomy.yml"
+  db: "data/library.db"
+  raw: "data/raw"
+  logs: "data/logs"
+  spike: "data/spike"

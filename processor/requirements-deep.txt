@@ -1,0 +1,8 @@
+# 深挖链路（下载 + 本地转写）
+yt-dlp>=2024.7.1
+faster-whisper>=1.0.0
+# PyAV ≥19 移除了 metadata_errors 参数，faster-whisper 1.2.x 还没跟上 → 锁定 <19
+av>=11,<19
+# Windows 上 ctranslate2 跑 GPU 需要 cuBLAS / cuDNN 运行库（pip 版即可，代码会自动注册 DLL 路径）
+nvidia-cublas-cu12
+nvidia-cudnn-cu12

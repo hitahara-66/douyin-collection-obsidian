@@ -1,0 +1,14 @@
+{
+  "name": "douyin-library-fetcher",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Edge CDP 采集抖音收藏 / 收藏夹 / 稍后再看",
+  "scripts": {
+    "test": "node test-capture.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "^25.13.0",
+    "yaml": "^2.9.1"
+  }
+}
